@@ -17,17 +17,10 @@
 #  under the License.
 #
 
-# Login page for CARDS
-[feature name=cards-login]
+# Extension point finder
+create path (cards:ExtensionPointFinder) /uixp
 
-[:repoinit]
-    create path (cards:login) /login
-
-    set ACL for everyone
-        allow   jcr:read    on /login
-    end
-
-#This configures the default login page for the sling form based authentication handler
-[configurations]
-    org.apache.sling.auth.form.FormAuthenticationHandler
-        form.login.form="/login"
+# Allow all users to read from the extension point finder and one of the nodes
+set ACL for everyone
+    allow   jcr:read    on /uixp
+end
