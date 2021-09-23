@@ -27,15 +27,6 @@
   </parent>
 
   <artifactId>cards-saml-support</artifactId>
-  <packaging>slingfeature</packaging>
+  <packaging>slingosgifeature</packaging>
   <name>CARDS - Support for SAML authentication</name>
-
-  <build>
-    <plugins>
-      <plugin>
-        <groupId>org.apache.sling</groupId>
-        <artifactId>slingstart-maven-plugin</artifactId>
-      </plugin>
-    </plugins>
-  </build>
 </project>
