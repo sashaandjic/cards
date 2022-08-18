@@ -176,7 +176,7 @@ function PatientIdentification(props) {
   }
 
   const identify = () => {
-    if (!dob || !mrn && !hc) {
+    if (!dob.isValid || !mrn && !hc) {
       return null;
     }
     let requestData = new FormData();
@@ -191,7 +191,7 @@ function PatientIdentification(props) {
   // On submitting the patient login form, make a request to identify the patient
   const onSubmit = (event) => {
     event?.preventDefault();
-    if (!dob || !dob.isValid || !mrn && !hc) {
+    if (!dob.isValid || !mrn && !hc) {
       setError("Date of birth and either MRN or Health Card Number are required for patient identification");
       return;
     }
@@ -350,7 +350,7 @@ function PatientIdentification(props) {
                 inputFormat={dateFormat}
                 label="Date of birth"
                 value={dob}
-                onChange={(value) => setDob(value)}
+                onChange={setDob}
                 renderInput={ (params) =>
                   <TextField
                     autoFocus
