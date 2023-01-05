@@ -666,7 +666,8 @@ public class ClarityImportTask implements Runnable
     {
         LOGGER.warn("Running getOrCreateSubject for a subject with an identifier of {}", identifier);
         String subjectMatchQuery = String.format(
-            "SELECT * FROM [cards:Subject] as subject WHERE subject.'identifier'='%s'", identifier);
+            "SELECT * FROM [cards:Subject] as subject WHERE subject.'identifier'='%s' option (index tag property)",
+            identifier);
         resolver.refresh();
         final Iterator<Resource> subjectResourceIter = resolver.findResources(subjectMatchQuery, "JCR-SQL2");
         if (subjectResourceIter.hasNext()) {
