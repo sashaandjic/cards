@@ -209,35 +209,37 @@ public class ClarityImportTask implements Runnable
             }
 
             // Handle the questions associated with this Subject
-            Resource subjectQuestions = child.getChild("questions");
-            if (subjectQuestions != null) {
-                for (Resource questionMapping : subjectQuestions.getChildren()) {
-                    String questionPath = questionMapping.getValueMap().get("question", "");
-                    String sqlColumn = questionMapping.getValueMap().get("sqlColumn", "");
+            Resource subjectQuestionnaires = child.getChild("questionnaires");
+            if (subjectQuestionnaires != null) {
+                for (Resource questionnaireMapping : subjectQuestionnaires.getChildren()) {
+                    for (Resource questionMapping : questionnaireMapping.getChildren()) {
+                        String questionPath = questionMapping.getValueMap().get("question", "");
+                        String sqlColumn = questionMapping.getValueMap().get("sqlColumn", "");
 
-                    // Populate this.columns
-                    this.columns.add(sqlColumn);
+                        // Populate this.columns
+                        this.columns.add(sqlColumn);
 
-                    // Populate this.sqlColumnToDataType
-                    this.sqlColumnToDataType.put(sqlColumn,
-                        resolver.getResource(questionPath).getValueMap().get("dataType", ""));
+                        // Populate this.sqlColumnToDataType
+                        this.sqlColumnToDataType.put(sqlColumn,
+                            resolver.getResource(questionPath).getValueMap().get("dataType", ""));
 
-                    // Populate this.questionnaireToQuestions
-                    String questionnairePath = this.getQuestionnairePathFromQuestionPath(questionPath);
-                    QuestionInformation thisQuestion = new QuestionInformation(
-                        questionPath,
-                        this.getQuestionType(resolver.resolve(questionPath)),
-                        questionnairePath,
-                        sqlColumn
-                    );
-                    if (!this.questionnaireToQuestions.containsKey(questionnairePath)) {
-                        this.questionnaireToQuestions.put(questionnairePath, new LinkedList<QuestionInformation>());
+                        // Populate this.questionnaireToQuestions
+                        String questionnairePath = this.getQuestionnairePathFromQuestionPath(questionPath);
+                        QuestionInformation thisQuestion = new QuestionInformation(
+                            questionPath,
+                            this.getQuestionType(resolver.resolve(questionPath)),
+                            questionnairePath,
+                            sqlColumn
+                        );
+                        if (!this.questionnaireToQuestions.containsKey(questionnairePath)) {
+                            this.questionnaireToQuestions.put(questionnairePath, new LinkedList<QuestionInformation>());
+                        }
+                        // TODO: Should we somehow ensure that thisQuestion is not added more than once ???
+                        this.questionnaireToQuestions.get(questionnairePath).add(thisQuestion);
+
+                        // Populate this.questionnaireToSubjectColumnHeader
+                        this.questionnaireToSubjectColumnHeader.put(questionnairePath, subjectIDColumn);
                     }
-                    // TODO: Should we somehow ensure that thisQuestion is not added more than once ???
-                    this.questionnaireToQuestions.get(questionnairePath).add(thisQuestion);
-
-                    // Populate this.questionnaireToSubjectColumnHeader
-                    this.questionnaireToSubjectColumnHeader.put(questionnairePath, subjectIDColumn);
                 }
             }
 
@@ -292,6 +294,102 @@ public class ClarityImportTask implements Runnable
         return queryString;
     }
 
+    private String sqlResultsToString(ResultSet results) throws SQLException
+    {
+        String ret = "";
+        Iterator<Map.Entry<String, String>> columnsIterator = this.sqlColumnToDataType.entrySet().iterator();
+        while (columnsIterator.hasNext()) {
+            Map.Entry<String, String> col = columnsIterator.next();
+            ret += col.getKey() + " = " + results.getString(col.getKey());
+            if (columnsIterator.hasNext()) {
+                ret += ", ";
+            }
+        }
+        return ret;
+    }
+
+    @SuppressWarnings({"checkstyle:CyclomaticComplexity", "checkstyle:ExecutableStatementCount"})
+    private void walkThroughClarityImport(ResourceResolver resolver, Resource node, ResultSet sqlRow,
+        String subjectPath, Resource subjectParent) throws SQLException
+    {
+        for (Resource child : node.getChildren()) {
+            String childNodeType = child.getValueMap().get("jcr:primaryType", "");
+            if ("cards:claritySubjectMapping".equals(childNodeType)) {
+                String subjectNodeType = child.getValueMap().get("subjectType", "");
+                String subjectIDColumnLabel = child.getValueMap().get("subjectIDColumn", "");
+                String subjectIDColumnValue;
+                if (!"".equals(subjectIDColumnLabel)) {
+                    subjectIDColumnValue = sqlRow.getString(subjectIDColumnLabel);
+                } else {
+                    subjectIDColumnValue = UUID.randomUUID().toString();
+                }
+                //String newSubjectNodeName = UUID.randomUUID().toString();
+                //String newSubjectPath = subjectPath + "/" + newSubjectNodeName;
+                //LOGGER.warn("Creating a Subject of type {} at path {}.", subjectNodeType, newSubjectPath);
+
+                // What are the children of subjectPath
+                LOGGER.warn("Children of {} are...", subjectPath);
+                for (Resource testChild : resolver.resolve(subjectPath).getChildren()) {
+                    LOGGER.warn("... {}", testChild.getPath());
+                }
+
+                // We will need to call getOrCreateSubject(identifier, subjectTypePath, resolver, parent);
+                Resource newSubjectParent = subjectParent;
+                String newSubjectPath = subjectPath;
+                try (ResourceResolver shortLivedResolver = this.resolverFactory.getServiceResourceResolver(null)) {
+                    newSubjectParent = getOrCreateSubject(subjectIDColumnValue,
+                        subjectNodeType, shortLivedResolver, shortLivedResolver.resolve(subjectPath));
+                    newSubjectPath = newSubjectParent.getPath();
+                    LOGGER.warn("Creating a Subject of type {} at path {}.", subjectNodeType, newSubjectPath);
+                    shortLivedResolver.commit();
+                } catch (LoginException e) {
+                    LOGGER.error("A login exception occurred!");
+                    LOGGER.error("{}", e);
+                } catch (PersistenceException | RepositoryException e) {
+                    LOGGER.error("An error occurred while creating the subject {}", newSubjectPath);
+                    LOGGER.error("{}", e);
+                }
+
+                // Iterate through all Questionnaires that are to be created
+                // TODO
+                Resource questionnaires = child.getChild("questionnaires");
+                if (questionnaires != null) {
+                    for (Resource questionnaire : questionnaires.getChildren()) {
+                        boolean updatesExisting = questionnaire.getValueMap().get("updatesExisting", false);
+                        if (updatesExisting) {
+                            LOGGER.warn("Updating a Questionnaire ({}) for this subject", questionnaire.getName());
+                        } else {
+                            LOGGER.warn("Creating a Questionnaire ({}) for this subject", questionnaire.getName());
+                        }
+
+                        // Iterate through the cards:clarityQuestionMapping children of questionnaire
+                        for (Resource questionMapping : questionnaire.getChildren()) {
+                            String questionPath = questionMapping.getValueMap().get("question", "");
+                            String sqlColumn = questionMapping.getValueMap().get("sqlColumn", "");
+                            String answerValue = sqlRow.getString(sqlColumn);
+                            LOGGER.warn("Questionnaire has {} = {}", questionPath, answerValue);
+                        }
+                    }
+                }
+
+                // Recursively go through the childSubjects
+                Resource childSubjects = child.getChild("childSubjects");
+                if (childSubjects != null) {
+                    walkThroughClarityImport(resolver, childSubjects, sqlRow, newSubjectPath, newSubjectParent);
+                }
+            }
+            //walkThroughClarityImport(resolver, child, sqlRow);
+        }
+    }
+
+    private void createFormsAndSubjects(ResourceResolver resolver, ResultSet sqlRow) throws SQLException
+    {
+        Resource clarityImportNode = resolver.resolve("/apps/cards/clarityImport");
+
+        // Recursively move down clarityImportNode
+        walkThroughClarityImport(resolver, clarityImportNode, sqlRow, "/Subjects", resolver.resolve("/Subjects"));
+    }
+
     @Override
     public void run()
     {
@@ -315,6 +413,7 @@ public class ClarityImportTask implements Runnable
             while (results.next()) {
                 LOGGER.info("Entry found: " + results.getString("PAT_MRN"));
                 Resource subjectParent = resolver.resolve("/Subjects");
+                /*
                 for (Map.Entry<String, List<QuestionInformation>> entry
                     : this.questionnaireToQuestions.entrySet()) {
                     String questionnaire = entry.getKey();
@@ -325,9 +424,16 @@ public class ClarityImportTask implements Runnable
                         LOGGER.warn("Failed to process a Clarity SQL row.");
                     }
                 }
+                */
+                LOGGER.warn("Creating Subjects and Forms for the SQL entry: {}", sqlResultsToString(results));
+
+                // Determine which Subjects and Forms need to be created
+                // TODO
+                createFormsAndSubjects(resolver, results);
             }
 
             session.save();
+            /*
             this.nodesToCheckin.get().forEach(node -> {
                 try {
                     this.versionManager.get().checkin(node);
@@ -335,13 +441,12 @@ public class ClarityImportTask implements Runnable
                     LOGGER.warn("Failed to check in node {}: {}", node, e.getMessage(), e);
                 }
             });
+            */
         } catch (SQLException e) {
             LOGGER.error("Failed to connect to SQL: {}", e.getMessage(), e);
         } catch (LoginException e) {
             LOGGER.error("Could not find service user while writing results: {}", e.getMessage(), e);
         } catch (RepositoryException e) {
-            LOGGER.error("Error during Clarity import: {}", e.getMessage(), e);
-        } catch (PersistenceException e) {
             LOGGER.error("Error during Clarity import: {}", e.getMessage(), e);
         } finally {
             // Cleanup all ThreadLocals
@@ -559,15 +664,19 @@ public class ClarityImportTask implements Runnable
     private Resource getOrCreateSubject(final String identifier, final String subjectTypePath,
         final ResourceResolver resolver, final Resource parent) throws RepositoryException, PersistenceException
     {
+        LOGGER.warn("Running getOrCreateSubject for a subject with an identifier of {}", identifier);
         String subjectMatchQuery = String.format(
             "SELECT * FROM [cards:Subject] as subject WHERE subject.'identifier'='%s'", identifier);
+        resolver.refresh();
         final Iterator<Resource> subjectResourceIter = resolver.findResources(subjectMatchQuery, "JCR-SQL2");
         if (subjectResourceIter.hasNext()) {
+            LOGGER.warn("Subject already exists - therefore, getting it");
             final Resource subjectResource = subjectResourceIter.next();
             this.versionManager.get().checkout(subjectResource.getPath());
             this.nodesToCheckin.get().add(subjectResource.getPath());
             return subjectResource;
         } else {
+            LOGGER.warn("Subject does not already exist - therefore, creating it");
             Resource parentResource = parent;
             if (parentResource == null) {
                 parentResource = resolver.getResource("/Subjects/");

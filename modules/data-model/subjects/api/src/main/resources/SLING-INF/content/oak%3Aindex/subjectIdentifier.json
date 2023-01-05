@@ -1,0 +1,7 @@
+{
+  "jcr:primaryType": "oak:QueryIndexDefinition",
+  "type": "property",
+  "jcr:name:propertyNames": [
+    "identifier"
+  ]
+}
