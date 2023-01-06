@@ -87,6 +87,7 @@
       "date" : {
         "minAnswers": {"0":{}, "1":{}},
         "dateFormat": "string",
+        "type": {"timestamp":{}, "interval":{}},
         "entryMode": {
           "user": {
           },
@@ -402,7 +403,7 @@
       },
       "time": {
         "minAnswers": {"0":{}, "1":{}},
-        "dateFormat": {"mm:ss": {}, "HH:mm:ss":{}},
+        "dateFormat": {"HH:mm": {}, "mm:ss": {}, "HH:mm:ss":{}},
         "entryMode": {
           "user": {
             "lowerLimit": "string",
