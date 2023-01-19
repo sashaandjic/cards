@@ -78,7 +78,7 @@ public class QuestionnaireToCsvProcessor implements ResourceCSVProcessor
         // The proper serialization depends on "deep", "dereference", and "-labels", but we may allow other JSON
         // processors to be enabled/disabled to further customize the data, so we also append the original selectors
         final String processedPath = resource.getPath()
-            + resource.getResourceMetadata().getResolutionPathInfo() + ".deep.dereference.-labels";
+            + resource.getResourceMetadata().getResolutionPathInfo() + ".csv.deep.dereference.-labels";
         final JsonObject result = resource.getResourceResolver().resolve(processedPath).adaptTo(JsonObject.class);
 
         if (result != null) {
