@@ -80,6 +80,8 @@ public class AnswerCompletionStatusEditor extends DefaultEditor
 
     private final boolean newNode;
 
+    private boolean logging;
+
     /**
      * Simple constructor.
      *
@@ -91,21 +93,38 @@ public class AnswerCompletionStatusEditor extends DefaultEditor
      * @param session the current JCR session
      * @param formUtils for working with form data
      * @param allValidators all available AnswerValidator services
+     * @param logging temp
      */
     public AnswerCompletionStatusEditor(final List<NodeBuilder> nodeBuilder, final NodeBuilder form,
         final boolean newNode, final Session session, final FormUtils formUtils,
-        final List<AnswerValidator> allValidators)
+        final List<AnswerValidator> allValidators, boolean logging)
     {
         this.currentNodeBuilderPath = nodeBuilder;
         this.currentNodeBuilder = nodeBuilder.get(nodeBuilder.size() - 1);
+        if (logging) {
+            LOGGER.error("        Running on logged node");
+            int count = 0;
+            for (Object i : this.currentNodeBuilder.getChildNodeNames()) {
+                count++;
+            }
+            LOGGER.error("        Children: " + count);
+        }
         this.newNode = newNode;
         this.session = session;
         this.formUtils = formUtils;
         this.allValidators = allValidators;
         if (this.formUtils.isForm(this.currentNodeBuilder)) {
             this.form = this.currentNodeBuilder;
+            LOGGER.error("Completion status editor running on form " + this.form.getProperty("jcr:uuid")
+                .getValue(Type.STRING));
+            if (this.form.hasProperty("autocreated"))
+            {
+                LOGGER.error("Logging enabled");
+                this.logging = true;
+            }
         } else {
             this.form = form;
+            this.logging = logging;
         }
     }
 
@@ -117,20 +136,26 @@ public class AnswerCompletionStatusEditor extends DefaultEditor
     public Editor childNodeAdded(final String name, final NodeState after)
         throws CommitFailedException
     {
+        if (this.logging) {
+            LOGGER.error("    Child Added");
+        }
         final List<NodeBuilder> tmpList = new ArrayList<>(this.currentNodeBuilderPath);
         tmpList.add(this.currentNodeBuilder.getChildNode(name));
         return new AnswerCompletionStatusEditor(tmpList, this.form, true, this.session, this.formUtils,
-            this.allValidators);
+            this.allValidators, this.logging);
     }
 
     @Override
     public Editor childNodeChanged(final String name, final NodeState before, final NodeState after)
         throws CommitFailedException
     {
+        if (this.logging) {
+            LOGGER.error("    Child Changed");
+        }
         final List<NodeBuilder> tmpList = new ArrayList<>(this.currentNodeBuilderPath);
         tmpList.add(this.currentNodeBuilder.getChildNode(name));
         return new AnswerCompletionStatusEditor(tmpList, this.form, false, this.session, this.formUtils,
-            this.allValidators);
+            this.allValidators, this.logging);
     }
 
     @Override
@@ -138,6 +163,9 @@ public class AnswerCompletionStatusEditor extends DefaultEditor
         throws CommitFailedException
     {
         if (this.formUtils.isAnswer(this.currentNodeBuilder)) {
+            if (this.logging) {
+                LOGGER.error("    Found Answer");
+            }
             validateAnswer();
         } else if (this.formUtils.isForm(this.currentNodeBuilder)
             || this.formUtils.isAnswerSection(this.currentNodeBuilder)) {
@@ -157,6 +185,10 @@ public class AnswerCompletionStatusEditor extends DefaultEditor
      */
     public void validateAnswer()
     {
+        if (this.logging) {
+            LOGGER.error("        Validating Answer " + this.currentNodeBuilder.getProperty("question")
+                .getValue(Type.STRING));
+        }
         final Node questionNode = this.formUtils.getQuestion(this.currentNodeBuilder);
 
         if (questionNode != null) {
@@ -183,6 +215,9 @@ public class AnswerCompletionStatusEditor extends DefaultEditor
     {
         if (this.formUtils.isForm(n)) {
             if (!(n.getChildNodeNames().iterator().hasNext())) {
+                if (this.logging) {
+                    LOGGER.error("        Empty Form");
+                }
                 return true;
             }
         }

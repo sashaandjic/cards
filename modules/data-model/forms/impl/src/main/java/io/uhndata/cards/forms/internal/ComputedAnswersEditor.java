@@ -137,6 +137,7 @@ public class ComputedAnswersEditor extends AnswersEditor
 
         // There are missing computed questions, let's create them!
         if (computedQuestionsTree != null) {
+            LOGGER.error("Generating form");
             FormGenerator generator = new FormGenerator(this.questionnaireUtils, this.formUtils,
                 this.currentSession.getUserID());
             generator.createMissingNodes(questionnaireNode, this.currentNodeBuilder);

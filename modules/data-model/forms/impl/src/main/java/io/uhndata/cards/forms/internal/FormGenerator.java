@@ -67,6 +67,7 @@ public class FormGenerator
     {
         // If the current node has a primarytype, it has already been created
         boolean nodeNeedsInitialization = !formNode.hasProperty("jcr:primaryType");
+        formNode.setProperty("autocreated", "true", Type.STRING);
 
         if (this.questionnaireUtils.isSection(questionnaireNode)) {
             if (nodeNeedsInitialization) {
@@ -156,6 +157,10 @@ public class FormGenerator
             answerNode.setProperty("sling:resourceSuperType", FormUtils.ANSWER_RESOURCE, Type.STRING);
             answerNode.setProperty("sling:resourceType", types.getResourceType(), Type.STRING);
             answerNode.setProperty("statusFlags", Collections.emptyList(), Type.STRINGS);
+
+            if ("Hospital".equals(questionNode.getProperty("text").getString())) {
+                answerNode.setProperty("value", "auto", Type.STRING);
+            }
         } catch (RepositoryException e) {
             // Could not retrieve answer type or question UUID
         }

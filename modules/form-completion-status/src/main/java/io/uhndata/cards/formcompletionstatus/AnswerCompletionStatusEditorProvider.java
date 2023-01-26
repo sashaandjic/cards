@@ -70,7 +70,7 @@ public class AnswerCompletionStatusEditorProvider implements EditorProvider
             tmpList.add(builder);
             return new AnswerCompletionStatusEditor(tmpList, null, false, resolver.adaptTo(Session.class),
                 this.formUtils,
-                this.allValidators);
+                this.allValidators, false);
         }
         return null;
     }
