@@ -129,11 +129,6 @@ public class ReferenceAnswersEditor extends AnswersEditor
 
         // There are missing reference questions, let's create them!
         if (unansweredQuestionsTree != null) {
-            LOGGER.error("Generating form");
-            FormGenerator generator = new FormGenerator(this.questionnaireUtils, this.formUtils,
-                this.currentSession.getUserID());
-            generator.createMissingNodes(questionnaireNode, this.currentNodeBuilder);
-
             // Retrieve all the referenced answers
             unansweredQuestionsTree.getQuestionAndAnswers(this.currentNodeBuilder)
                 .entrySet().stream().forEach(entry -> {
