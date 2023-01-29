@@ -66,5 +66,7 @@
     <module>page-start-header</module>
     <module>webhook-backup</module>
     <module>saml</module>
+    <module>scheduled-csv-export</module>
+    <module>clarity-integration</module>
   </modules>
 </project>

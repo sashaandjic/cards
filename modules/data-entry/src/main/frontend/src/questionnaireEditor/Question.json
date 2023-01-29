@@ -68,8 +68,12 @@
         "minAnswers": {"0":{}, "1":{}},
         "yesLabel": "string",
         "noLabel": "string",
-        "enableUnknown": "boolean",
-        "unknownLabel": "string",
+        "enableUnknown": {
+           "true" : {
+             "unknownLabel": "string"
+           },
+           "false" : {}
+        },
         "compact" : "boolean",
         "entryMode": {
           "user": {
@@ -310,7 +314,10 @@
             "minAnswers": "long",
             "maxAnswers": "long",
             "displayMode": {
-              "input": {},
+              "input": {
+                "enableVocabularyBrowser" : "boolean",
+                "enableUserEntry" : "boolean"
+              },
               "list": {
                 "compact" : "boolean",
                 "answerOptions" : {
@@ -319,6 +326,8 @@
                 }
               },
               "list+input" : {
+                "enableVocabularyBrowser" : "boolean",
+                "enableUserEntry" : "boolean",
                 "compact" : "boolean",
                 "answerOptions" : {
                   "type": "textOptions",
@@ -362,7 +371,8 @@
             "maxAnswers": "long",
             "displayMode": {
               "input": {
-                "propertiesToSearch" : "string"
+                "propertiesToSearch" : "string",
+                "enableUserEntry" : "boolean"
               },
               "select" : {},
               "list": {
@@ -370,6 +380,7 @@
               },
               "list+input" : {
                 "propertiesToSearch" : "string",
+                "enableUserEntry" : "boolean",
                 "compact" : "boolean",
                 "answerOptions" : "textOptions"
               }

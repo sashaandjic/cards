@@ -473,7 +473,7 @@ export const NumberFormatCustom = forwardRef((props, ref) => {
 });
 
 NumberFormatCustom.propTypes = {
-  onChange: PropTypes.func.isRequired,
+  onChange: PropTypes.func.isRequired
 };
 
 NumberQuestion.propTypes = {
