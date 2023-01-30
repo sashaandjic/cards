@@ -17,7 +17,6 @@
 package io.uhndata.cards.forms.internal;
 
 import java.text.SimpleDateFormat;
-import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -62,8 +61,8 @@ public class FormGenerator
 
     public NodeBuilder createMissingNodes(final Node questionnaireNode, final NodeBuilder formNode)
     {
-        // If the current node has a primarytype, it has already been created
-        boolean nodeNeedsInitialization = !formNode.hasProperty("jcr:primaryType");
+        // If the current node has a primary type, it has already been created
+        final boolean nodeNeedsInitialization = !formNode.hasProperty("jcr:primaryType");
 
         if (this.questionnaireUtils.isSection(questionnaireNode)) {
             if (nodeNeedsInitialization) {
@@ -72,20 +71,18 @@ public class FormGenerator
             createMissingChildren(questionnaireNode, formNode);
         } else if (this.questionnaireUtils.isQuestionnaire(questionnaireNode)) {
             createMissingChildren(questionnaireNode, formNode);
-        } else {
-            if (nodeNeedsInitialization) {
-                initializeAnswer(questionnaireNode, formNode);
-            }
+        } else if (nodeNeedsInitialization) {
+            initializeAnswer(questionnaireNode, formNode);
         }
 
         return formNode;
     }
 
-    private void createMissingChildren(Node questionnaireNode, NodeBuilder formNode)
+    private void createMissingChildren(final Node questionnaireNode, final NodeBuilder formNode)
     {
-        Map<String, NodeBuilder> childFormNodes = new HashMap<>();
-        for (String childNodeName : formNode.getChildNodeNames()) {
-            NodeBuilder childNode = formNode.getChildNode(childNodeName);
+        final Map<String, NodeBuilder> childFormNodes = new HashMap<>();
+        for (final String childNodeName : formNode.getChildNodeNames()) {
+            final NodeBuilder childNode = formNode.getChildNode(childNodeName);
             if (this.formUtils.isAnswerSection(childNode)) {
                 childFormNodes.put(this.formUtils.getSectionIdentifier(childNode), childNode);
             } else if (this.formUtils.isAnswer(childNode)) {
@@ -94,8 +91,8 @@ public class FormGenerator
         }
 
         try {
-            for (NodeIterator i = questionnaireNode.getNodes(); i.hasNext();) {
-                Node questionnaireChild = i.nextNode();
+            for (final NodeIterator i = questionnaireNode.getNodes(); i.hasNext();) {
+                final Node questionnaireChild = i.nextNode();
 
                 if (!this.questionnaireUtils.isSection(questionnaireChild)
                     && !this.questionnaireUtils.isQuestion(questionnaireChild)) {
@@ -115,15 +112,15 @@ public class FormGenerator
                 // && childQuestionNode.getProperty("recurrent").getBoolean()
                 // && childQuestionNode.hasProperty("initialNumberOfInstances")) {
                 // expectedNumberOfInstances = (int) childQuestionNode.getProperty("initialNumberOfInstances")
-                //     .getLong();
+                // .getLong();
 
             }
-        } catch (RepositoryException e) {
+        } catch (final RepositoryException e) {
             // Could not iterate through children
         }
     }
 
-    private void initializeSection(Node sectionNode, NodeBuilder answerSectionNode)
+    private void initializeSection(final Node sectionNode, final NodeBuilder answerSectionNode)
     {
         try {
             // Section must be created before primary type
@@ -132,35 +129,32 @@ public class FormGenerator
             answerSectionNode.setProperty("jcr:primaryType", FormUtils.ANSWER_SECTION_NODETYPE, Type.NAME);
             answerSectionNode.setProperty("sling:resourceSuperType", "cards/Resource", Type.STRING);
             answerSectionNode.setProperty("sling:resourceType", FormUtils.ANSWER_SECTION_RESOURCE, Type.STRING);
-            answerSectionNode.setProperty("statusFlags", Collections.emptyList(), Type.STRINGS);
-        } catch (RepositoryException e) {
+        } catch (final RepositoryException e) {
             // Could not retrieve section UUID
         }
     }
 
-    private void initializeAnswer(Node questionNode, NodeBuilder answerNode)
+    private void initializeAnswer(final Node questionNode, final NodeBuilder answerNode)
     {
         try {
-            AnswerNodeTypes types = new AnswerNodeTypes(questionNode);
-            SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX");
+            final AnswerNodeTypes types = new AnswerNodeTypes(questionNode);
+            final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX");
             answerNode.setProperty("jcr:created", dateFormat.format(new Date()), Type.DATE);
             answerNode.setProperty("jcr:createdBy", this.userID, Type.NAME);
             answerNode.setProperty(FormUtils.QUESTION_PROPERTY, questionNode.getIdentifier(),
                 Type.REFERENCE);
             answerNode.setProperty("jcr:primaryType", types.getPrimaryType(), Type.NAME);
-            answerNode.setProperty("sling:resourceSuperType", FormUtils.ANSWER_RESOURCE, Type.STRING);
             answerNode.setProperty("sling:resourceType", types.getResourceType(), Type.STRING);
-            answerNode.setProperty("statusFlags", Collections.emptyList(), Type.STRINGS);
-        } catch (RepositoryException e) {
+        } catch (final RepositoryException e) {
             // Could not retrieve answer type or question UUID
         }
     }
 
     protected static class AnswerNodeTypes
     {
-        private String primaryType;
+        private final String primaryType;
 
-        private String resourceType;
+        private final String resourceType;
 
         private Type<?> dataType;
 

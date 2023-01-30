@@ -58,13 +58,14 @@ public class CreateMissingAnswersEditorProvider implements EditorProvider
     private FormUtils formUtils;
 
     @Override
-    public Editor getRootEditor(NodeState before, NodeState after, NodeBuilder builder, CommitInfo info)
+    public Editor getRootEditor(final NodeState before, final NodeState after, final NodeBuilder builder,
+        final CommitInfo info)
         throws CommitFailedException
     {
         final ResourceResolver resolver = this.rrp.getThreadResourceResolver();
         if (resolver != null) {
             // Each ReferenceEditor maintains a state, so a new instance must be returned each time
-            return new CreateMissingAnswersEditor(builder, resolver.adaptTo(Session.class), this.rrf,
+            return new CreateMissingAnswersEditor(builder, resolver.adaptTo(Session.class), this.rrf, this.rrp,
                 this.questionnaireUtils, this.formUtils);
         }
         return null;

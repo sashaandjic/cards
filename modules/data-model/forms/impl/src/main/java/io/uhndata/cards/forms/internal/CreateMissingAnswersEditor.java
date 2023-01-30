@@ -19,10 +19,8 @@ package io.uhndata.cards.forms.internal;
 import java.util.Map;
 
 import javax.jcr.Node;
-import javax.jcr.RepositoryException;
 import javax.jcr.Session;
 
-import org.apache.jackrabbit.oak.api.Type;
 import org.apache.jackrabbit.oak.spi.commit.DefaultEditor;
 import org.apache.jackrabbit.oak.spi.commit.Editor;
 import org.apache.jackrabbit.oak.spi.state.NodeBuilder;
@@ -35,6 +33,7 @@ import org.slf4j.LoggerFactory;
 
 import io.uhndata.cards.forms.api.FormUtils;
 import io.uhndata.cards.forms.api.QuestionnaireUtils;
+import io.uhndata.cards.resolverProvider.ThreadResourceResolverProvider;
 
 /**
  * An {@link Editor} that creates any missing answers and answer sections, following the questionnaire as a template.
@@ -51,22 +50,16 @@ public class CreateMissingAnswersEditor extends DefaultEditor
 
     private final ResourceResolverFactory rrf;
 
+    private final ThreadResourceResolverProvider rrp;
+
     /** The current user session. */
     private final Session currentSession;
-
-    /**
-     * A session that has access to all the questionnaire questions and can access restricted questions. This session
-     * should not be used for accessing any user data.
-     */
-    private Session serviceSession;
 
     private final QuestionnaireUtils questionnaireUtils;
 
     private final FormUtils formUtils;
 
-    private boolean isFormNode;
-
-    private boolean shouldRunOnLeave;
+    private final boolean isFormNode;
 
     /**
      * Simple constructor.
@@ -78,28 +71,27 @@ public class CreateMissingAnswersEditor extends DefaultEditor
      * @param formUtils for working with form data
      */
     public CreateMissingAnswersEditor(final NodeBuilder nodeBuilder, final Session currentSession,
-        final ResourceResolverFactory rrf, final QuestionnaireUtils questionnaireUtils, final FormUtils formUtils)
+        final ResourceResolverFactory rrf, final ThreadResourceResolverProvider rrp,
+        final QuestionnaireUtils questionnaireUtils, final FormUtils formUtils)
     {
-        LOGGER.error("Constructor for {}", nodeBuilder);
         this.currentNodeBuilder = nodeBuilder;
         this.questionnaireUtils = questionnaireUtils;
         this.formUtils = formUtils;
-        this.shouldRunOnLeave = false;
         this.currentSession = currentSession;
         this.rrf = rrf;
+        this.rrp = rrp;
         this.isFormNode = this.formUtils.isForm(nodeBuilder);
     }
 
     @Override
     public Editor childNodeAdded(final String name, final NodeState after)
     {
-        LOGGER.error("CHILD ADDED {} {}", name, after);
         if (this.isFormNode) {
             // No need to descend further down, we already know that this is a form that has changes
             return null;
         } else {
             return new CreateMissingAnswersEditor(this.currentNodeBuilder.getChildNode(name), this.currentSession,
-                this.rrf, this.questionnaireUtils, this.formUtils);
+                this.rrf, this.rrp, this.questionnaireUtils, this.formUtils);
         }
     }
 
@@ -110,53 +102,36 @@ public class CreateMissingAnswersEditor extends DefaultEditor
     }
 
     @Override
-    public void leave(final NodeState before, final NodeState after)
-    {
-        LOGGER.error("LEAVE \n\n\n {} \n\n\n {} \n\n\n", this.currentNodeBuilder.getNodeState(), after);
-    }
-
-    @Override
     public void enter(final NodeState before, final NodeState after)
     {
-        LOGGER.error("ENTER \n\n\n {} \n\n\n {} \n\n\n{} \n\n\n", this.currentNodeBuilder.getNodeState(), before,
-            after);
         if (!this.isFormNode) {
             return;
         }
 
+        boolean mustPopResolver = false;
         try (ResourceResolver serviceResolver =
             this.rrf.getServiceResourceResolver(Map.of(ResourceResolverFactory.SUBSERVICE, "createMissingAnswers"))) {
-            if (serviceResolver != null) {
-                this.serviceSession = serviceResolver.adaptTo(Session.class);
-                handleLeave(after);
-            }
-        } catch (LoginException e) {
+            this.rrp.push(serviceResolver);
+            mustPopResolver = true;
+            createMissingNodes(after);
+        } catch (final LoginException e) {
             // Should not happen
         } finally {
-            this.serviceSession = null;
+            if (mustPopResolver) {
+                this.rrp.pop();
+            }
         }
     }
 
-    private void handleLeave(final NodeState form)
+    private void createMissingNodes(final NodeState form)
     {
-        // Get a list of all unanswered reference questions
-        final Node questionnaireNode = getQuestionnaire();
+        final Node questionnaireNode = this.formUtils.getQuestionnaire(this.currentNodeBuilder);
         if (questionnaireNode == null) {
             return;
         }
 
-        FormGenerator generator = new FormGenerator(this.questionnaireUtils, this.formUtils,
+        final FormGenerator generator = new FormGenerator(this.questionnaireUtils, this.formUtils,
             this.currentSession.getUserID());
         generator.createMissingNodes(questionnaireNode, this.currentNodeBuilder);
-    }
-
-    private Node getQuestionnaire()
-    {
-        final String questionnaireId = this.currentNodeBuilder.getProperty("questionnaire").getValue(Type.REFERENCE);
-        try {
-            return this.serviceSession.getNodeByIdentifier(questionnaireId);
-        } catch (RepositoryException e) {
-            return null;
-        }
     }
 }
